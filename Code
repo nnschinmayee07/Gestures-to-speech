@@ -1,0 +1,68 @@
+#include <SoftwareSerial.h>
+#include <DFRobotDFPlayerMini.h>
+
+const int flexPins[5] = {A0, A1, A2, A3, A4}; // Thumb to Pinky
+int flexValues[5];
+int threshold = 500;  // Adjust based on your sensor calibration
+
+SoftwareSerial mySoftwareSerial(10, 11); // RX, TX
+DFRobotDFPlayerMini myDFPlayer;
+
+void setup() {
+  Serial.begin(9600);
+  mySoftwareSerial.begin(9600);
+
+  if (!myDFPlayer.begin(mySoftwareSerial)) {
+    Serial.println("DFPlayer not found!");
+    while (true);
+  }
+  myDFPlayer.volume(25); // Set volume (0-30)
+}
+
+void loop() {
+  readFlexSensors();
+  detectGesture();
+  delay(1000);  // Small delay between gestures
+}
+
+void readFlexSensors() {
+  for (int i = 0; i < 5; i++) {
+    flexValues[i] = analogRead(flexPins[i]);
+    Serial.print("F");
+    Serial.print(i + 1);
+    Serial.print(": ");
+    Serial.print(flexValues[i]);
+    Serial.print("  ");
+  }
+  Serial.println();
+}
+
+void detectGesture() {
+  bool bent[5];
+  for (int i = 0; i < 5; i++) {
+    bent[i] = flexValues[i] > threshold;
+  }
+
+  // Gesture: All straight = Hello
+  if (!bent[0] && !bent[1] && !bent[2] && !bent[3] && !bent[4]) {
+    playAudio(1); // "Hello"
+  }
+  // Gesture: Index + Middle bent = Yes
+  else if (!bent[0] && bent[1] && bent[2] && !bent[3] && !bent[4]) {
+    playAudio(2); // "Yes"
+  }
+  // Gesture: Thumb bent only = No
+  else if (bent[0] && !bent[1] && !bent[2] && !bent[3] && !bent[4]) {
+    playAudio(3); // "No"
+  }
+  // Gesture: Index bent only = Help
+  else if (!bent[0] && bent[1] && !bent[2] && !bent[3] && !bent[4]) {
+    playAudio(4); // "Help"
+  }
+}
+
+void playAudio(int trackNumber) {
+  Serial.print("Playing track ");
+  Serial.println(trackNumber);
+  myDFPlayer.play(trackNumber); // Play MP3 file 0001.mp3, 0002.mp3, etc.
+}
